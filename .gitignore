@@ -10,7 +10,7 @@ frontend/tailwind.config.d.ts
 backend/node_modules
 backend/dist
 backend/.env
-*.log
-
 .vercel
-.env*.local
+frontend/.vercel
+backend/.vercel
+*.log
