@@ -61,9 +61,9 @@ taskflow-ai/
    - backend: http://localhost:4000
 
 5. log in with seeded credentials:
-   - admin@taskflow.ai / Admin@123
-   - manager@taskflow.ai / Admin@123
-   - member@taskflow.ai / Admin@123
+   - admin@taskflow.ai / value of `SEED_DEFAULT_PASSWORD` (defaults to `Admin@123`)
+   - manager@taskflow.ai / value of `SEED_DEFAULT_PASSWORD`
+   - member@taskflow.ai / value of `SEED_DEFAULT_PASSWORD`
 
 ## Local development without Docker
 
@@ -126,6 +126,7 @@ Backend project:
 - `APP_URL=https://your-frontend-project.vercel.app`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `SEED_DEFAULT_PASSWORD`
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_SECURE`

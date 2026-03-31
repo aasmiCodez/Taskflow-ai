@@ -13,7 +13,8 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  const passwordHash = await bcrypt.hash("Admin@123", 10);
+  const seedPassword = process.env.SEED_DEFAULT_PASSWORD || "Admin@123";
+  const passwordHash = await bcrypt.hash(seedPassword, 10);
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@taskflow.ai" },
@@ -120,12 +121,12 @@ async function main() {
     });
   }
 
-  console.log("Seeded demo users:");
-  console.log("admin@taskflow.ai / Admin@123");
-  console.log("pmo@taskflow.ai / Admin@123");
-  console.log("manager.one@taskflow.ai / Admin@123");
-  console.log("manager.two@taskflow.ai / Admin@123");
-  console.log("member.one@taskflow.ai / Admin@123");
+  console.log("Seeded demo users with the configured seed password:");
+  console.log(`admin@taskflow.ai / ${seedPassword}`);
+  console.log(`pmo@taskflow.ai / ${seedPassword}`);
+  console.log(`manager.one@taskflow.ai / ${seedPassword}`);
+  console.log(`manager.two@taskflow.ai / ${seedPassword}`);
+  console.log(`member.one@taskflow.ai / ${seedPassword}`);
 }
 
 main()
