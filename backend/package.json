@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
-    "build": "node -e \"console.log('Backend runs directly from src and does not require a build step.')\"",
+    "build": "node_modules\\.bin\\prisma.cmd generate && node_modules\\.bin\\prisma.cmd migrate deploy",
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "postinstall": "npx prisma generate",

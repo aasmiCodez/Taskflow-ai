@@ -118,6 +118,7 @@ Frontend project:
 Backend project:
 
 - `DATABASE_URL`
+- `DIRECT_URL`
 - `REDIS_URL`
 - `JWT_SECRET`
 - `JWT_EXPIRES_IN`
@@ -149,6 +150,11 @@ The backend project is configured for Vercel with:
 ### Prisma migration flow
 
 Production should use migrations, not `db push`.
+
+If you use Neon or another pooled Postgres provider:
+
+- `DATABASE_URL` can be the pooled runtime URL used by the app
+- `DIRECT_URL` should be the direct non-pooled URL used for Prisma migrations during deploys
 
 Run locally when you make schema changes:
 
