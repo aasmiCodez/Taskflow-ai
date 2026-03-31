@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">TaskFlow AI favicon</title>
+  <desc id="desc">Rounded square icon with a TaskFlow T mark and flowing task lanes.</desc>
+  <defs>
+    <linearGradient id="bg" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f172a" />
+      <stop offset="1" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="accent" x1="16" y1="14" x2="48" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2dd4bf" />
+      <stop offset="1" stop-color="#14b8a6" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#bg)" />
+  <rect x="4.75" y="4.75" width="54.5" height="54.5" rx="15.25" fill="none" stroke="#1e293b" stroke-width="1.5" />
+  <path d="M18 18h28v7H35v21h-8V25H18z" fill="#f8fafc" />
+  <rect x="39" y="30" width="11" height="4.5" rx="2.25" fill="url(#accent)" />
+  <rect x="34" y="38" width="16" height="4.5" rx="2.25" fill="url(#accent)" opacity=".9" />
+  <circle cx="48" cy="21" r="3" fill="#2dd4bf" />
+</svg>
