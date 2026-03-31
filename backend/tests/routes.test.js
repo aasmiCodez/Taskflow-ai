@@ -1,7 +1,8 @@
 const request = require("supertest");
 const { app } = require("../src/app");
 const { prisma } = require("../src/db");
-const { hashPassword } = require("../src/utils");
+const emailService = require("../src/email");
+const { createToken, hashPassword } = require("../src/utils");
 
 beforeAll(async () => {
   await prisma.$connect();
@@ -68,5 +69,47 @@ describe("Health and auth routes", () => {
 
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Missing authentication token.");
+  });
+
+  test("POST /api/users still creates the user when onboarding email delivery fails", async () => {
+    const adminEmail = `admin-${Date.now()}@taskflow.ai`;
+    const admin = await prisma.user.create({
+      data: {
+        name: "Admin User",
+        email: adminEmail,
+        passwordHash: await hashPassword("Admin@123"),
+        role: "ADMIN",
+        passwordSetupRequired: false,
+      },
+    });
+
+    const sendSpy = jest
+      .spyOn(emailService, "sendUserOnboardingEmail")
+      .mockRejectedValueOnce(new Error("SMTP temporarily unavailable"));
+
+    const response = await request(app)
+      .post("/api/users")
+      .set("Authorization", `Bearer ${createToken(admin)}`)
+      .send({
+        name: "New Member",
+        email: `member-${Date.now()}@taskflow.ai`,
+        role: "MEMBER",
+        managerId: null,
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.emailDelivery).toBe("failed");
+    expect(typeof response.body.setupLink).toBe("string");
+    expect(response.body.setupLink).toContain("mode=setup");
+
+    const createdUser = await prisma.user.findUnique({
+      where: { email: response.body.user.email },
+      select: { id: true, passwordSetupRequired: true },
+    });
+
+    expect(createdUser).toBeTruthy();
+    expect(createdUser.passwordSetupRequired).toBe(true);
+
+    sendSpy.mockRestore();
   });
 });

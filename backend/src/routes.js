@@ -33,8 +33,9 @@ const {
 } = require("./utils");
 const { enhanceTaskDescription, generateSubtasks } = require("./ai");
 const { formatTask } = require("./formatters");
-const { sendUserOnboardingEmail, sendPasswordResetEmail } = require("./email");
+const emailService = require("./email");
 const { config } = require("./config");
+const logger = require("./logger");
 
 const router = express.Router();
 const authLimiter = rateLimit({
@@ -422,7 +423,7 @@ router.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
 
   const resetToken = await issuePasswordResetToken(user.id);
   const resetLink = buildCredentialLink("reset", resetToken);
-  await sendPasswordResetEmail({
+  await emailService.sendPasswordResetEmail({
     email: user.email,
     name: user.name,
     resetLink,
@@ -535,14 +536,25 @@ router.post("/api/users", authenticate, authorize(Role.ADMIN), async (req, res) 
   const setupToken = await issuePasswordSetupToken(user.id);
   const setupLink = buildCredentialLink("setup", setupToken);
 
-  const emailStatus = await sendUserOnboardingEmail({
-    email: user.email,
-    name: user.name,
-    setupLink,
-  });
+  let emailStatus = { delivery: "disabled" };
+
+  try {
+    emailStatus = await emailService.sendUserOnboardingEmail({
+      email: user.email,
+      name: user.name,
+      setupLink,
+    });
+  } catch (error) {
+    logger.error("Failed to send onboarding email for user %s: %o", user.id, error);
+    emailStatus = { delivery: "failed" };
+  }
 
   await invalidateDashboardCache();
-  res.status(201).json({ user: sanitizeUser(user), emailDelivery: emailStatus.delivery });
+  res.status(201).json({
+    user: sanitizeUser(user),
+    emailDelivery: emailStatus.delivery,
+    ...(emailStatus.delivery === "failed" ? { setupLink } : {}),
+  });
 });
 
 router.patch("/api/users/:userId", authenticate, authorize(Role.ADMIN), async (req, res) => {

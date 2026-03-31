@@ -142,6 +142,14 @@ function handlePrismaError(error, req) {
         message: "The requested record was not found.",
       };
     }
+
+    if (error.code === "P2022") {
+      logger.error("Database schema is out of date on %s %s: %o", req.method, req.originalUrl, error.meta);
+      return {
+        statusCode: 500,
+        message: "Database schema is out of date. Run the latest Prisma migrations in production.",
+      };
+    }
   }
 
   return null;
