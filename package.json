@@ -1,0 +1,19 @@
+{
+  "name": "taskflow-ai",
+  "private": true,
+  "version": "2.0.0",
+  "scripts": {
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "start:frontend": "npm --prefix frontend run preview",
+    "start:backend": "npm --prefix backend run start",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:migrate:deploy": "npm --prefix backend run prisma:migrate:deploy",
+    "prisma:push": "npm --prefix backend run prisma:push"
+  }
+}
