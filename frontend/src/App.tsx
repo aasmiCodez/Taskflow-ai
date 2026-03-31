@@ -14,6 +14,7 @@ import { TaskComposer } from "./components/dashboard/TaskComposer";
 import { TaskStatusCenter } from "./components/dashboard/TaskStatusCenter";
 import { TeamManagementPanel } from "./components/dashboard/TeamManagementPanel";
 import { TopBar } from "./components/dashboard/TopBar";
+import { UserHierarchyModal } from "./components/dashboard/UserHierarchyModal";
 import { apiRequest, getErrorMessage } from "./lib/api";
 import { getTaskStoryPoints } from "./lib/storyPoints";
 import type {
@@ -118,6 +119,7 @@ export default function App() {
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hierarchyOpen, setHierarchyOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeChoice>(() => (localStorage.getItem("taskflow-theme") as ThemeChoice) || "aurora");
   const flashTimerRef = useRef<number | null>(null);
 
@@ -1009,7 +1011,9 @@ export default function App() {
 
         <section className="flex min-h-0 overflow-hidden flex-col gap-3 sm:gap-4">
           <TopBar
+            canOpenHierarchy={canViewUsers && users.length > 0}
             description={currentModule.description}
+            onOpenHierarchy={() => setHierarchyOpen(true)}
             onLogout={handleLogout}
             onOpenSettings={() => setSettingsOpen(true)}
             title={currentModule.title}
@@ -1041,6 +1045,10 @@ export default function App() {
           theme={theme}
           user={user}
         />
+      ) : null}
+
+      {hierarchyOpen ? (
+        <UserHierarchyModal currentUser={user} onClose={() => setHierarchyOpen(false)} users={users} />
       ) : null}
     </main>
   );
