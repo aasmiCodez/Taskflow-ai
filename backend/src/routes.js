@@ -202,6 +202,19 @@ async function assertManagerReference(managerId) {
   }
 }
 
+async function assertEmailAvailable(email) {
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  if (existing) {
+    const error = new Error("An account with this email already exists.");
+    error.statusCode = 409;
+    throw error;
+  }
+}
+
 function ensureManagerAssignmentRules(data) {
   if (data.role === Role.MEMBER && !data.managerId) {
     const error = new Error("Members must be assigned to a manager.");
@@ -330,6 +343,8 @@ router.post("/api/auth/register", authLimiter, async (req, res) => {
       message: "Admin registration is disabled after initial bootstrap.",
     });
   }
+
+  await assertEmailAvailable(data.email);
 
   const user = await prisma.user.create({
     data: {
@@ -502,6 +517,7 @@ router.post("/api/users", authenticate, authorize(Role.ADMIN), async (req, res) 
   const data = createUserSchema.parse(req.body);
   ensureManagerAssignmentRules(data);
   await assertManagerReference(data.managerId);
+  await assertEmailAvailable(data.email);
 
   const generatedPassword = createOpaqueToken();
 
