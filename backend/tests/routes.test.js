@@ -1,7 +1,6 @@
 const request = require("supertest");
 const { app } = require("../src/app");
 const { prisma } = require("../src/db");
-const emailService = require("../src/email");
 const { createToken, hashPassword } = require("../src/utils");
 
 beforeAll(async () => {
@@ -71,7 +70,7 @@ describe("Health and auth routes", () => {
     expect(response.body.message).toBe("Missing authentication token.");
   });
 
-  test("POST /api/users still creates the user when onboarding email delivery fails", async () => {
+  test("POST /api/users creates a temporary-password user that must reset on first login", async () => {
     const adminEmail = `admin-${Date.now()}@taskflow.ai`;
     const admin = await prisma.user.create({
       data: {
@@ -82,10 +81,6 @@ describe("Health and auth routes", () => {
         passwordSetupRequired: false,
       },
     });
-
-    const sendSpy = jest
-      .spyOn(emailService, "sendUserOnboardingEmail")
-      .mockRejectedValueOnce(new Error("SMTP temporarily unavailable"));
 
     const response = await request(app)
       .post("/api/users")
@@ -98,18 +93,16 @@ describe("Health and auth routes", () => {
       });
 
     expect(response.status).toBe(201);
-    expect(response.body.emailDelivery).toBe("failed");
-    expect(typeof response.body.setupLink).toBe("string");
-    expect(response.body.setupLink).toContain("mode=setup");
+    expect(typeof response.body.temporaryPassword).toBe("string");
+    expect(response.body.temporaryPassword.length).toBeGreaterThanOrEqual(8);
 
     const createdUser = await prisma.user.findUnique({
       where: { email: response.body.user.email },
-      select: { id: true, passwordSetupRequired: true },
+      select: { id: true, passwordSetupRequired: true, passwordHash: true },
     });
 
     expect(createdUser).toBeTruthy();
     expect(createdUser.passwordSetupRequired).toBe(true);
-
-    sendSpy.mockRestore();
+    expect(createdUser.passwordHash).not.toBe(response.body.temporaryPassword);
   });
 });

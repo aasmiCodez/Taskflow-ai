@@ -41,6 +41,32 @@ function createOpaqueToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function createTemporaryPassword() {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const symbols = "!@#$%";
+  const all = upper + lower + digits + symbols;
+
+  const required = [
+    upper[Math.floor(Math.random() * upper.length)],
+    lower[Math.floor(Math.random() * lower.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    symbols[Math.floor(Math.random() * symbols.length)],
+  ];
+
+  while (required.length < 12) {
+    required.push(all[Math.floor(Math.random() * all.length)]);
+  }
+
+  for (let index = required.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [required[index], required[swapIndex]] = [required[swapIndex], required[index]];
+  }
+
+  return required.join("");
+}
+
 function hashOpaqueToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
@@ -118,6 +144,7 @@ module.exports = {
   createPasswordSetupToken,
   verifyPasswordSetupToken,
   createOpaqueToken,
+  createTemporaryPassword,
   hashOpaqueToken,
   durationToMs,
   buildCredentialLink,

@@ -81,6 +81,11 @@ export interface AuthResponse {
   setupToken?: string;
 }
 
+export interface CreateUserResponse {
+  user: User;
+  temporaryPassword: string;
+}
+
 export interface MessageResponse {
   message: string;
 }
@@ -122,6 +127,7 @@ export interface CreateUserPayload {
   email: string;
   role: UserRole;
   managerId?: string | null;
+  temporaryPassword?: string;
 }
 
 export interface UpdateUserPayload {

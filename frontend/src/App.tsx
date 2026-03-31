@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { LoginScreen } from "./components/auth/LoginScreen";
+import { PasswordSetupModal } from "./components/auth/PasswordSetupModal";
 import { PasswordSetupScreen } from "./components/auth/PasswordSetupScreen";
 import { AiSearchPanel } from "./components/dashboard/AiSearchPanel";
 import { DeliveryCharts } from "./components/dashboard/DeliveryCharts";
@@ -99,12 +100,14 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [passwordSetupUser, setPasswordSetupUser] = useState<User | null>(null);
   const [passwordSetupToken, setPasswordSetupToken] = useState<string | null>(null);
+  const [currentTemporaryPassword, setCurrentTemporaryPassword] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [authInfoMessage, setAuthInfoMessage] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
   const [users, setUsers] = useState<TeamUser[]>([]);
   const [createUserError, setCreateUserError] = useState<string | null>(null);
+  const [createdCredential, setCreatedCredential] = useState<{ email: string; temporaryPassword: string } | null>(null);
   const [flash, setFlash] = useState<FlashMessage | null>(null);
   const [searchSummary, setSearchSummary] = useState("");
   const [searchResults, setSearchResults] = useState<AiSearchResult[]>([]);
@@ -164,6 +167,7 @@ export default function App() {
     setUser(null);
     setPasswordSetupUser(null);
     setPasswordSetupToken(null);
+    setCurrentTemporaryPassword(null);
     setLoginError(null);
     setAuthInfoMessage(null);
     setAuthView(
@@ -218,11 +222,13 @@ export default function App() {
       });
 
       if (response.requiresPasswordSetup && response.setupToken) {
+        setUser(response.user);
         setPasswordSetupUser(response.user);
         setPasswordSetupToken(response.setupToken);
+        setCurrentTemporaryPassword(credentials.password);
         setAuthView("setup");
         setActiveModule("overview");
-        showFlash("success", "Set a new password to activate this account.");
+        showFlash("success", "Login accepted. Reset your temporary password to continue.");
         return;
       }
 
@@ -237,7 +243,7 @@ export default function App() {
     }
   }
 
-  async function handleSetupPassword(password: string, confirmPassword: string) {
+  async function handleSetupPassword(currentPassword: string, password: string, confirmPassword: string) {
     const activeSetupToken = passwordSetupToken || (credentialMode === "setup" ? credentialToken : null);
 
     if (!activeSetupToken) {
@@ -255,6 +261,7 @@ export default function App() {
         method: "POST",
         body: {
           setupToken: activeSetupToken,
+          currentPassword,
           password,
         },
       });
@@ -265,6 +272,7 @@ export default function App() {
       setUser(response.user);
       setPasswordSetupUser(null);
       setPasswordSetupToken(null);
+      setCurrentTemporaryPassword(null);
       setAuthView("login");
       setActiveModule("overview");
       showFlash("success", "Password created successfully.");
@@ -518,35 +526,30 @@ export default function App() {
   async function handleCreateUser(payload: CreateUserPayload) {
     try {
       setCreateUserError(null);
-      const response = await apiRequest<{ emailDelivery: string; setupLink?: string }>("/api/users", {
+      const response = await apiRequest<{ user: User; temporaryPassword: string }>("/api/users", {
         method: "POST",
         accessToken: token,
         body: payload,
       });
       await refreshUsers("ADMIN");
       await refreshDashboard();
-      let message =
-        response.emailDelivery === "smtp"
-          ? "User created and onboarding email sent."
-          : "User created, but SMTP is not configured, so the setup email could not be sent yet.";
+      setCreatedCredential({
+        email: response.user.email,
+        temporaryPassword: response.temporaryPassword,
+      });
 
-      if (response.emailDelivery === "failed") {
-        let copied = false;
-
-        if (response.setupLink && navigator.clipboard?.writeText) {
-          try {
-            await navigator.clipboard.writeText(response.setupLink);
-            copied = true;
-          } catch (_error) {
-            copied = false;
-          }
+      let copied = false;
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(response.temporaryPassword);
+          copied = true;
+        } catch (_error) {
+          copied = false;
         }
-
-        message = copied
-          ? "User created, but onboarding email delivery failed. The one-time setup link has been copied to your clipboard."
-          : "User created, but onboarding email delivery failed. Check the backend response logs and fix SMTP before resending access.";
       }
-
+      const message = copied
+        ? "User created. The temporary password has been copied to your clipboard."
+        : "User created. Share the temporary password shown in the user panel securely.";
       showFlash("success", message);
     } catch (error: unknown) {
       const message = getErrorMessage(error, "Could not create user.");
@@ -737,6 +740,7 @@ export default function App() {
         currentUserId={user!.id}
         canManage={canManageUsers}
         createUserError={createUserError}
+        createdCredential={createdCredential}
         onCreateUser={handleCreateUser}
         onDeleteUser={handleDeleteUser}
         onUpdateUser={handleUpdateUser}
@@ -968,19 +972,6 @@ export default function App() {
             title="Reset your password"
             user={null}
           />
-        ) : authView === "setup" ? (
-          <PasswordSetupScreen
-            badgeLabel="Account Setup"
-            description={
-              passwordSetupUser?.name
-                ? `${passwordSetupUser.name}, choose your permanent password to activate your workspace access.`
-                : "Choose your permanent password to activate your workspace access. Setup links expire automatically and can only be used once."
-            }
-            onSubmit={handleSetupPassword}
-            submitLabel="Activate account"
-            title="Create your password"
-            user={passwordSetupUser}
-          />
         ) : (
           <LoginScreen
             errorMessage={loginError}
@@ -1049,6 +1040,10 @@ export default function App() {
 
       {hierarchyOpen ? (
         <UserHierarchyModal currentUser={user} onClose={() => setHierarchyOpen(false)} users={users} />
+      ) : null}
+
+      {authView === "setup" && passwordSetupToken ? (
+        <PasswordSetupModal expectedCurrentPassword={currentTemporaryPassword} onSubmit={handleSetupPassword} user={passwordSetupUser} />
       ) : null}
     </main>
   );

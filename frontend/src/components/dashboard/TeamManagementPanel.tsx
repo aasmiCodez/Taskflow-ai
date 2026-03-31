@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { PasswordCriteriaList } from "../auth/PasswordCriteriaList";
 import type { CreateUserPayload, TeamUser, UpdateUserPayload, UserRole } from "../../types";
 
 interface TeamManagementPanelProps {
@@ -6,6 +7,7 @@ interface TeamManagementPanelProps {
   currentUserId: string;
   canManage: boolean;
   createUserError?: string | null;
+  createdCredential?: { email: string; temporaryPassword: string } | null;
   onCreateUser: (payload: CreateUserPayload) => Promise<void>;
   onUpdateUser: (userId: string, payload: UpdateUserPayload) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
@@ -16,6 +18,7 @@ export function TeamManagementPanel({
   currentUserId,
   canManage,
   createUserError,
+  createdCredential,
   onCreateUser,
   onUpdateUser,
   onDeleteUser,
@@ -24,6 +27,8 @@ export function TeamManagementPanel({
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<UserRole>("MEMBER");
   const [managerId, setManagerId] = useState("");
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false);
   const [memberAssignmentDrafts, setMemberAssignmentDrafts] = useState<Record<string, string>>({});
   const [roleDrafts, setRoleDrafts] = useState<Record<string, UserRole>>({});
   const [managerDrafts, setManagerDrafts] = useState<Record<string, string>>({});
@@ -78,11 +83,19 @@ export function TeamManagementPanel({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onCreateUser({ name, email, role, managerId: role === "MEMBER" ? managerId || null : null });
+    await onCreateUser({
+      name,
+      email,
+      role,
+      managerId: role === "MEMBER" ? managerId || null : null,
+      temporaryPassword: temporaryPassword.trim() || undefined,
+    });
     setName("");
     setEmail("");
     setRole("MEMBER");
     setManagerId("");
+    setTemporaryPassword("");
+    setShowTemporaryPassword(false);
   }
 
   return (
@@ -103,7 +116,7 @@ export function TeamManagementPanel({
               <div>
                 <h3 className="text-lg font-semibold text-white">Create Workspace User</h3>
                 <p className="mt-1 text-sm text-slate-400">
-                  Admin can create Admin, PMO, Manager, and Member accounts. New users receive a secure setup link instead of a shared password.
+                  Admin can create Admin, PMO, Manager, and Member accounts. You can set a temporary password here or let the system generate one automatically.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
@@ -136,6 +149,35 @@ export function TeamManagementPanel({
                   </option>
                 ))}
               </select>
+              <div className="relative">
+                <input
+                  className="w-full rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 pr-11 text-sm text-white outline-none focus:border-teal-500"
+                  onChange={(event) => setTemporaryPassword(event.target.value)}
+                  placeholder="Temporary password (optional)"
+                  type={showTemporaryPassword ? "text" : "password"}
+                  value={temporaryPassword}
+                />
+                <button
+                  aria-label={showTemporaryPassword ? "Hide temporary password" : "Show temporary password"}
+                  className="absolute inset-y-0 right-2 inline-flex items-center justify-center rounded-lg px-2 text-slate-400 transition hover:text-slate-200"
+                  onClick={() => setShowTemporaryPassword((current) => !current)}
+                  type="button"
+                >
+                  {showTemporaryPassword ? (
+                    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path d="m3 3 18 18M10.6 10.7A3 3 0 0 0 13.3 13.4M9.9 5.2A10.7 10.7 0 0 1 12 5c5 0 9 4 10 7-0.4 1.2-1.2 2.5-2.3 3.7M6.1 6.1C3.9 7.4 2.5 9.3 2 12c1 3 5 7 10 7 1.6 0 3.1-.4 4.4-1.1" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                    </svg>
+                  ) : (
+                    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              <div className="md:col-span-2 xl:col-span-3">
+                <PasswordCriteriaList password={temporaryPassword} />
+              </div>
               <button className="inline-flex items-center justify-center rounded-xl bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-400 xl:justify-self-start" type="submit">
                 Create user
               </button>
@@ -144,6 +186,20 @@ export function TeamManagementPanel({
               <p className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
                 {createUserError}
               </p>
+            ) : null}
+            {createdCredential ? (
+              <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-sm text-amber-50">
+                <p className="font-semibold text-white">Temporary password created</p>
+                <p className="mt-2 text-amber-100">
+                  Share these credentials securely. The user will be forced to reset the password on first login.
+                </p>
+                <p className="mt-3">
+                  <span className="font-semibold text-white">Email:</span> {createdCredential.email}
+                </p>
+                <p className="mt-1 break-all">
+                  <span className="font-semibold text-white">Temporary password:</span> {createdCredential.temporaryPassword}
+                </p>
+              </div>
             ) : null}
           </div>
 

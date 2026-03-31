@@ -16,7 +16,9 @@ const registerSchema = z.object({
   managerId: z.string().cuid().optional().nullable(),
 });
 
-const createUserSchema = registerSchema.omit({ password: true });
+const createUserSchema = registerSchema.omit({ password: true }).extend({
+  temporaryPassword: password.optional(),
+});
 
 const userUpdateSchema = z
   .object({
@@ -36,6 +38,7 @@ const loginSchema = z.object({
 
 const setupPasswordSchema = z.object({
   setupToken: z.string().min(1),
+  currentPassword: z.string().min(1, "Enter your current temporary password."),
   password,
 });
 

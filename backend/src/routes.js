@@ -22,6 +22,7 @@ const {
 const {
   createToken,
   createOpaqueToken,
+  createTemporaryPassword,
   hashOpaqueToken,
   durationToMs,
   buildCredentialLink,
@@ -395,6 +396,11 @@ router.post("/api/auth/setup-password", authLimiter, async (req, res) => {
     return res.status(400).json({ message: "This password setup link is invalid or has expired." });
   }
 
+  const isCurrentPasswordValid = await comparePassword(data.currentPassword, existing.passwordHash);
+  if (!isCurrentPasswordValid) {
+    return res.status(401).json({ message: "The current temporary password is incorrect." });
+  }
+
   const updatedUser = await prisma.user.update({
     where: { id: existing.id },
     data: {
@@ -520,40 +526,23 @@ router.post("/api/users", authenticate, authorize(Role.ADMIN), async (req, res) 
   await assertManagerReference(data.managerId);
   await assertEmailAvailable(data.email);
 
-  const generatedPassword = createOpaqueToken();
+  const temporaryPassword = data.temporaryPassword || createTemporaryPassword();
 
   const user = await prisma.user.create({
     data: {
       name: data.name,
       email: data.email,
-      passwordHash: await hashPassword(generatedPassword),
+      passwordHash: await hashPassword(temporaryPassword),
       role: data.role || Role.MEMBER,
       managerId: data.managerId || null,
       passwordSetupRequired: true,
     },
   });
 
-  const setupToken = await issuePasswordSetupToken(user.id);
-  const setupLink = buildCredentialLink("setup", setupToken);
-
-  let emailStatus = { delivery: "disabled" };
-
-  try {
-    emailStatus = await emailService.sendUserOnboardingEmail({
-      email: user.email,
-      name: user.name,
-      setupLink,
-    });
-  } catch (error) {
-    logger.error("Failed to send onboarding email for user %s: %o", user.id, error);
-    emailStatus = { delivery: "failed" };
-  }
-
   await invalidateDashboardCache();
   res.status(201).json({
     user: sanitizeUser(user),
-    emailDelivery: emailStatus.delivery,
-    ...(emailStatus.delivery === "failed" ? { setupLink } : {}),
+    temporaryPassword,
   });
 });
 
