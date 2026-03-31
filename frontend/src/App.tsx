@@ -26,6 +26,7 @@ import type {
   DashboardStats,
   DescriptionDraftPayload,
   FlashMessage,
+  MessageResponse,
   Task,
   TaskStatus,
   TeamUser,
@@ -34,6 +35,7 @@ import type {
 } from "./types";
 
 type ModuleId = "overview" | "users" | "tasks" | "schedule" | "assignments" | "reports";
+type AuthView = "login" | "setup" | "reset";
 
 const emptyStats: DashboardStats = {
   totalTasks: 0,
@@ -90,10 +92,14 @@ function printStatus(status: TaskStatus) {
 }
 
 export default function App() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const credentialMode = searchParams.get("mode");
+  const credentialToken = searchParams.get("token");
   const [user, setUser] = useState<User | null>(null);
   const [passwordSetupUser, setPasswordSetupUser] = useState<User | null>(null);
   const [passwordSetupToken, setPasswordSetupToken] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [authInfoMessage, setAuthInfoMessage] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
   const [users, setUsers] = useState<TeamUser[]>([]);
@@ -102,6 +108,13 @@ export default function App() {
   const [searchResults, setSearchResults] = useState<AiSearchResult[]>([]);
   const [token, setToken] = useState<string | null>(localStorage.getItem("accessToken"));
   const [activeModule, setActiveModule] = useState<ModuleId>("overview");
+  const [authView, setAuthView] = useState<AuthView>(
+    credentialToken && credentialMode === "reset"
+      ? "reset"
+      : credentialToken && credentialMode === "setup"
+        ? "setup"
+        : "login"
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeChoice>(() => (localStorage.getItem("taskflow-theme") as ThemeChoice) || "aurora");
@@ -149,6 +162,14 @@ export default function App() {
     setPasswordSetupUser(null);
     setPasswordSetupToken(null);
     setLoginError(null);
+    setAuthInfoMessage(null);
+    setAuthView(
+      credentialToken && credentialMode === "reset"
+        ? "reset"
+        : credentialToken && credentialMode === "setup"
+          ? "setup"
+          : "login"
+    );
     setToken(null);
     setTasks([]);
     setStats(emptyStats);
@@ -188,6 +209,7 @@ export default function App() {
   async function handleLogin(credentials: { email: string; password: string }) {
     try {
       setLoginError(null);
+      setAuthInfoMessage(null);
       const response = await apiRequest<AuthResponse>("/api/auth/login", {
         body: credentials,
       });
@@ -195,6 +217,7 @@ export default function App() {
       if (response.requiresPasswordSetup && response.setupToken) {
         setPasswordSetupUser(response.user);
         setPasswordSetupToken(response.setupToken);
+        setAuthView("setup");
         setActiveModule("overview");
         showFlash("success", "Set a new password to activate this account.");
         return;
@@ -203,6 +226,7 @@ export default function App() {
       localStorage.setItem("accessToken", response.token!);
       setToken(response.token!);
       setUser(response.user);
+      setAuthView("login");
       setActiveModule("overview");
       showFlash("success", "Login successful.");
     } catch (error: any) {
@@ -211,7 +235,9 @@ export default function App() {
   }
 
   async function handleSetupPassword(password: string, confirmPassword: string) {
-    if (!passwordSetupToken || !passwordSetupUser) {
+    const activeSetupToken = passwordSetupToken || (credentialMode === "setup" ? credentialToken : null);
+
+    if (!activeSetupToken) {
       showFlash("error", "Password setup session expired. Please log in again.");
       return;
     }
@@ -225,20 +251,67 @@ export default function App() {
       const response = await apiRequest<AuthResponse>("/api/auth/setup-password", {
         method: "POST",
         body: {
-          setupToken: passwordSetupToken,
+          setupToken: activeSetupToken,
           password,
         },
       });
 
+      window.history.replaceState({}, "", window.location.pathname);
       localStorage.setItem("accessToken", response.token!);
       setToken(response.token!);
       setUser(response.user);
       setPasswordSetupUser(null);
       setPasswordSetupToken(null);
+      setAuthView("login");
       setActiveModule("overview");
       showFlash("success", "Password created successfully.");
     } catch (error: any) {
       showFlash("error", error?.message || "Could not save password.");
+    }
+  }
+
+  async function handleForgotPassword(email: string) {
+    try {
+      const response = await apiRequest<MessageResponse>("/api/auth/forgot-password", {
+        method: "POST",
+        body: { email },
+      });
+      setLoginError(null);
+      setAuthInfoMessage(response.message);
+    } catch (error: any) {
+      setLoginError(error?.message || "Could not request a password reset.");
+    }
+  }
+
+  async function handleResetPassword(password: string, confirmPassword: string) {
+    if (!credentialToken) {
+      showFlash("error", "Password reset link is missing or invalid.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      showFlash("error", "Passwords do not match.");
+      return;
+    }
+
+    try {
+      const response = await apiRequest<AuthResponse>("/api/auth/reset-password", {
+        method: "POST",
+        body: {
+          token: credentialToken,
+          password,
+        },
+      });
+
+      window.history.replaceState({}, "", window.location.pathname);
+      localStorage.setItem("accessToken", response.token!);
+      setToken(response.token!);
+      setUser(response.user);
+      setAuthView("login");
+      setAuthInfoMessage(null);
+      showFlash("success", "Password reset successful.");
+    } catch (error: any) {
+      showFlash("error", error?.message || "Could not reset password.");
     }
   }
 
@@ -452,7 +525,7 @@ export default function App() {
         "success",
         response.emailDelivery === "smtp"
           ? "User created and onboarding email sent."
-          : "User created. SMTP is not configured, so share the temporary password with the user manually."
+          : "User created, but SMTP is not configured, so the setup email could not be sent yet."
       );
     } catch (error: any) {
       showFlash("error", error?.message || "Could not create user.");
@@ -862,10 +935,35 @@ export default function App() {
   if (!user) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        {passwordSetupUser ? (
-          <PasswordSetupScreen onSubmit={handleSetupPassword} user={passwordSetupUser} />
+        {authView === "reset" ? (
+          <PasswordSetupScreen
+            badgeLabel="Password Reset"
+            description="Choose a new password for your account. The reset link expires automatically and can only be used once."
+            onSubmit={handleResetPassword}
+            submitLabel="Reset password"
+            title="Reset your password"
+            user={null}
+          />
+        ) : authView === "setup" ? (
+          <PasswordSetupScreen
+            badgeLabel="Account Setup"
+            description={
+              passwordSetupUser?.name
+                ? `${passwordSetupUser.name}, choose your permanent password to activate your workspace access.`
+                : "Choose your permanent password to activate your workspace access. Setup links expire automatically and can only be used once."
+            }
+            onSubmit={handleSetupPassword}
+            submitLabel="Activate account"
+            title="Create your password"
+            user={passwordSetupUser}
+          />
         ) : (
-          <LoginScreen errorMessage={loginError} onLogin={handleLogin} />
+          <LoginScreen
+            errorMessage={loginError}
+            infoMessage={authInfoMessage}
+            onForgotPassword={handleForgotPassword}
+            onLogin={handleLogin}
+          />
         )}
       </main>
     );

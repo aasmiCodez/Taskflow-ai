@@ -2,13 +2,16 @@ import { FormEvent, useState } from "react";
 
 interface LoginScreenProps {
   errorMessage?: string | null;
+  infoMessage?: string | null;
   onLogin: (credentials: { email: string; password: string }) => Promise<void> | void;
+  onForgotPassword: (email: string) => Promise<void> | void;
 }
 
-export function LoginScreen({ errorMessage, onLogin }: LoginScreenProps) {
+export function LoginScreen({ errorMessage, infoMessage, onLogin, onForgotPassword }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingReset, setIsRequestingReset] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   async function submitLogin() {
@@ -25,6 +28,17 @@ export function LoginScreen({ errorMessage, onLogin }: LoginScreenProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await submitLogin();
+  }
+
+  async function handleForgotPassword() {
+    if (isRequestingReset || !email.trim()) return;
+    setIsRequestingReset(true);
+
+    try {
+      await onForgotPassword(email);
+    } finally {
+      setIsRequestingReset(false);
+    }
   }
 
   return (
@@ -62,6 +76,12 @@ export function LoginScreen({ errorMessage, onLogin }: LoginScreenProps) {
         {errorMessage ? (
           <div className="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
             {errorMessage}
+          </div>
+        ) : null}
+
+        {infoMessage ? (
+          <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            {infoMessage}
           </div>
         ) : null}
 
@@ -116,6 +136,22 @@ export function LoginScreen({ errorMessage, onLogin }: LoginScreenProps) {
             </button>
           </div>
         </form>
+
+        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-sm font-semibold text-white">Forgot your password?</p>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Enter your workspace email above, then request a secure reset link. For privacy, we always return the same
+            response whether or not the account exists.
+          </p>
+          <button
+            className="mt-4 inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+            disabled={isRequestingReset || !email.trim()}
+            onClick={handleForgotPassword}
+            type="button"
+          >
+            {isRequestingReset ? "Sending reset link..." : "Send reset link"}
+          </button>
+        </div>
       </section>
     </div>
   );

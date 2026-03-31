@@ -81,6 +81,10 @@ export interface AuthResponse {
   setupToken?: string;
 }
 
+export interface MessageResponse {
+  message: string;
+}
+
 export interface FlashMessage {
   type: "success" | "error";
   message: string;
@@ -111,7 +115,6 @@ export interface AiDescriptionResponse {
 export interface CreateUserPayload {
   name: string;
   email: string;
-  password: string;
   role: UserRole;
   managerId?: string | null;
 }

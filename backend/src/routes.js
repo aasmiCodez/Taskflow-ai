@@ -6,8 +6,11 @@ const { redisClient } = require("./redis");
 const { authenticate, authorize } = require("./middleware");
 const {
   registerSchema,
+  createUserSchema,
   loginSchema,
   setupPasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   userUpdateSchema,
   taskSchema,
   taskUpdateSchema,
@@ -18,7 +21,10 @@ const {
 } = require("./validation");
 const {
   createToken,
-  createPasswordSetupToken,
+  createOpaqueToken,
+  hashOpaqueToken,
+  durationToMs,
+  buildCredentialLink,
   hashPassword,
   comparePassword,
   sanitizeUser,
@@ -27,7 +33,8 @@ const {
 } = require("./utils");
 const { enhanceTaskDescription, generateSubtasks } = require("./ai");
 const { formatTask } = require("./formatters");
-const { sendUserOnboardingEmail } = require("./email");
+const { sendUserOnboardingEmail, sendPasswordResetEmail } = require("./email");
+const { config } = require("./config");
 
 const router = express.Router();
 const authLimiter = rateLimit({
@@ -256,6 +263,59 @@ async function invalidateDashboardCache() {
   }
 }
 
+async function issuePasswordSetupToken(userId) {
+  const token = createOpaqueToken();
+  const tokenHash = hashOpaqueToken(token);
+  const expiresAt = new Date(Date.now() + durationToMs(config.passwordSetupExpiresIn));
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordSetupTokenHash: tokenHash,
+      passwordSetupExpiresAt: expiresAt,
+    },
+  });
+
+  return token;
+}
+
+async function issuePasswordResetToken(userId) {
+  const token = createOpaqueToken();
+  const tokenHash = hashOpaqueToken(token);
+  const expiresAt = new Date(Date.now() + durationToMs(config.passwordResetExpiresIn));
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: expiresAt,
+    },
+  });
+
+  return token;
+}
+
+async function consumeStoredToken(token, purpose) {
+  const tokenHash = hashOpaqueToken(token);
+  const now = new Date();
+
+  if (purpose === "setup") {
+    return prisma.user.findFirst({
+      where: {
+        passwordSetupTokenHash: tokenHash,
+        passwordSetupExpiresAt: { gt: now },
+      },
+    });
+  }
+
+  return prisma.user.findFirst({
+    where: {
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: { gt: now },
+    },
+  });
+}
+
 router.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "taskflow-ai" });
 });
@@ -300,7 +360,7 @@ router.post("/api/auth/login", authLimiter, async (req, res) => {
 
   const safeUser = sanitizeUser(user);
   if (user.passwordSetupRequired) {
-    const setupToken = createPasswordSetupToken(user);
+    const setupToken = await issuePasswordSetupToken(user.id);
     return res.json({
       requiresPasswordSetup: true,
       setupToken,
@@ -314,11 +374,9 @@ router.post("/api/auth/login", authLimiter, async (req, res) => {
 
 router.post("/api/auth/setup-password", authLimiter, async (req, res) => {
   const data = setupPasswordSchema.parse(req.body);
-  const payload = verifyPasswordSetupToken(data.setupToken);
-
-  const existing = await prisma.user.findUnique({ where: { id: payload.sub } });
+  const existing = await consumeStoredToken(data.setupToken, "setup");
   if (!existing) {
-    return res.status(404).json({ message: "User not found." });
+    return res.status(400).json({ message: "This password setup link is invalid or has expired." });
   }
 
   const updatedUser = await prisma.user.update({
@@ -326,6 +384,55 @@ router.post("/api/auth/setup-password", authLimiter, async (req, res) => {
     data: {
       passwordHash: await hashPassword(data.password),
       passwordSetupRequired: false,
+      passwordSetupTokenHash: null,
+      passwordSetupExpiresAt: null,
+      passwordResetTokenHash: null,
+      passwordResetExpiresAt: null,
+    },
+  });
+
+  const safeUser = sanitizeUser(updatedUser);
+  const token = createToken(safeUser);
+  res.json({ token, user: safeUser });
+});
+
+router.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
+  const data = forgotPasswordSchema.parse(req.body);
+  const genericMessage = "If an account exists for that email, password reset instructions have been sent.";
+  const user = await prisma.user.findUnique({ where: { email: data.email } });
+
+  if (!user) {
+    return res.json({ message: genericMessage });
+  }
+
+  const resetToken = await issuePasswordResetToken(user.id);
+  const resetLink = buildCredentialLink("reset", resetToken);
+  await sendPasswordResetEmail({
+    email: user.email,
+    name: user.name,
+    resetLink,
+  });
+
+  return res.json({ message: genericMessage });
+});
+
+router.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+  const data = resetPasswordSchema.parse(req.body);
+  const existing = await consumeStoredToken(data.token, "reset");
+
+  if (!existing) {
+    return res.status(400).json({ message: "This password reset link is invalid or has expired." });
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: existing.id },
+    data: {
+      passwordHash: await hashPassword(data.password),
+      passwordSetupRequired: false,
+      passwordSetupTokenHash: null,
+      passwordSetupExpiresAt: null,
+      passwordResetTokenHash: null,
+      passwordResetExpiresAt: null,
     },
   });
 
@@ -392,25 +499,30 @@ router.get("/api/users", authenticate, authorize(Role.ADMIN, Role.PMO, Role.MANA
 });
 
 router.post("/api/users", authenticate, authorize(Role.ADMIN), async (req, res) => {
-  const data = registerSchema.parse(req.body);
+  const data = createUserSchema.parse(req.body);
   ensureManagerAssignmentRules(data);
   await assertManagerReference(data.managerId);
+
+  const generatedPassword = createOpaqueToken();
 
   const user = await prisma.user.create({
     data: {
       name: data.name,
       email: data.email,
-      passwordHash: await hashPassword(data.password),
+      passwordHash: await hashPassword(generatedPassword),
       role: data.role || Role.MEMBER,
       managerId: data.managerId || null,
       passwordSetupRequired: true,
     },
   });
 
+  const setupToken = await issuePasswordSetupToken(user.id);
+  const setupLink = buildCredentialLink("setup", setupToken);
+
   const emailStatus = await sendUserOnboardingEmail({
     email: user.email,
     name: user.name,
-    temporaryPassword: data.password,
+    setupLink,
   });
 
   await invalidateDashboardCache();

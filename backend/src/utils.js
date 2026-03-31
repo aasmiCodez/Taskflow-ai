@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { config } = require("./config");
@@ -34,6 +35,39 @@ function verifyPasswordSetupToken(token) {
     throw new Error("Invalid password setup token.");
   }
   return payload;
+}
+
+function createOpaqueToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function hashOpaqueToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function durationToMs(duration) {
+  const match = /^(\d+)([smhd])$/.exec(String(duration).trim());
+  if (!match) {
+    throw new Error(`Unsupported duration format: ${duration}`);
+  }
+
+  const value = Number(match[1]);
+  const unit = match[2];
+  const multiplier = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  }[unit];
+
+  return value * multiplier;
+}
+
+function buildCredentialLink(mode, token) {
+  const url = new URL(config.appUrl);
+  url.searchParams.set("mode", mode);
+  url.searchParams.set("token", token);
+  return url.toString();
 }
 
 async function hashPassword(password) {
@@ -83,6 +117,10 @@ module.exports = {
   createToken,
   createPasswordSetupToken,
   verifyPasswordSetupToken,
+  createOpaqueToken,
+  hashOpaqueToken,
+  durationToMs,
+  buildCredentialLink,
   hashPassword,
   comparePassword,
   sanitizeUser,

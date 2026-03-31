@@ -2,11 +2,22 @@ import { FormEvent, useState } from "react";
 import type { User } from "../../types";
 
 interface PasswordSetupScreenProps {
-  user: User;
+  user?: User | null;
   onSubmit: (password: string, confirmPassword: string) => Promise<void> | void;
+  title?: string;
+  badgeLabel?: string;
+  description?: string;
+  submitLabel?: string;
 }
 
-export function PasswordSetupScreen({ user, onSubmit }: PasswordSetupScreenProps) {
+export function PasswordSetupScreen({
+  user,
+  onSubmit,
+  title = "Create your own password",
+  badgeLabel = "Password Setup",
+  description,
+  submitLabel = "Save password",
+}: PasswordSetupScreenProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,11 +39,13 @@ export function PasswordSetupScreen({ user, onSubmit }: PasswordSetupScreenProps
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl items-center px-4 py-10">
       <section className="w-full rounded-[32px] border border-slate-800 bg-slate-950/80 p-8 shadow-2xl shadow-slate-950/40 backdrop-blur xl:p-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-200">Password Setup</p>
-        <h1 className="mt-3 text-3xl font-bold text-white">Create your own password</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-200">{badgeLabel}</p>
+        <h1 className="mt-3 text-3xl font-bold text-white">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          {user.name}, your account is ready. Use a new password that includes at least 8 characters, one uppercase letter,
-          one lowercase letter, and one number.
+          {description ||
+            `${
+              user?.name ? `${user.name}, ` : ""
+            }use a new password that includes at least 8 characters, one uppercase letter, one lowercase letter, and one number.`}
         </p>
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
@@ -99,7 +112,7 @@ export function PasswordSetupScreen({ user, onSubmit }: PasswordSetupScreenProps
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Saving password..." : "Save password"}
+            {isSubmitting ? "Saving password..." : submitLabel}
           </button>
         </form>
       </section>

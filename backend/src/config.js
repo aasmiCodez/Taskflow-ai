@@ -5,6 +5,7 @@ const config = {
   jwtSecret: process.env.JWT_SECRET || "change-this-secret-in-production",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   passwordSetupExpiresIn: process.env.PASSWORD_SETUP_EXPIRES_IN || "30m",
+  passwordResetExpiresIn: process.env.PASSWORD_RESET_EXPIRES_IN || "30m",
   openAiApiKey: process.env.OPENAI_API_KEY || "",
   openAiModel: process.env.OPENAI_MODEL || "gpt-4.1-mini",
   appUrl: process.env.APP_URL || "http://localhost:5173",

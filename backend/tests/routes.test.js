@@ -27,4 +27,13 @@ describe("Health and auth routes", () => {
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Invalid email or password.");
   });
+
+  test("POST /api/auth/forgot-password returns a generic success response", async () => {
+    const response = await request(app).post("/api/auth/forgot-password").send({
+      email: "doesnotexist@taskflow.ai",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe("If an account exists for that email, password reset instructions have been sent.");
+  });
 });

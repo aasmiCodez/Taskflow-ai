@@ -64,6 +64,7 @@ taskflow-ai/
    - admin@taskflow.ai / value of `SEED_DEFAULT_PASSWORD` (defaults to `Admin@123`)
    - manager@taskflow.ai / value of `SEED_DEFAULT_PASSWORD`
    - member@taskflow.ai / value of `SEED_DEFAULT_PASSWORD`
+   - if you do not know the password, use the login screen's password reset flow
 
 ## Local development without Docker
 
@@ -123,6 +124,7 @@ Backend project:
 - `JWT_SECRET`
 - `JWT_EXPIRES_IN`
 - `PASSWORD_SETUP_EXPIRES_IN`
+- `PASSWORD_RESET_EXPIRES_IN`
 - `APP_URL=https://your-frontend-project.vercel.app`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
@@ -169,6 +171,14 @@ Production deploys run:
 ```bash
 npm run prisma:migrate:deploy
 ```
+
+### Authentication and recovery
+
+- Seeded demo users use `SEED_DEFAULT_PASSWORD` as their initial password.
+- Admin-created users do not receive a shared temporary password. They receive a one-time setup link by email.
+- Users who forget their password can request a one-time reset link from the login screen.
+- Password values are never returned by the API, written into app logs, or sent back to the frontend after creation.
+- For secure onboarding and password reset in production, configure SMTP on the backend project.
 
 ### GitHub Actions secrets
 

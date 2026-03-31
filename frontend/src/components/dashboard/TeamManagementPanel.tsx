@@ -20,7 +20,6 @@ export function TeamManagementPanel({
 }: TeamManagementPanelProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("MEMBER");
   const [managerId, setManagerId] = useState("");
   const [memberAssignmentDrafts, setMemberAssignmentDrafts] = useState<Record<string, string>>({});
@@ -77,10 +76,9 @@ export function TeamManagementPanel({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onCreateUser({ name, email, password, role, managerId: role === "MEMBER" ? managerId || null : null });
+    await onCreateUser({ name, email, role, managerId: role === "MEMBER" ? managerId || null : null });
     setName("");
     setEmail("");
-    setPassword("");
     setRole("MEMBER");
     setManagerId("");
   }
@@ -103,7 +101,7 @@ export function TeamManagementPanel({
               <div>
                 <h3 className="text-lg font-semibold text-white">Create Workspace User</h3>
                 <p className="mt-1 text-sm text-slate-400">
-                  Admin can create Admin, PMO, Manager, and Member accounts. Members must be mapped to a manager team.
+                  Admin can create Admin, PMO, Manager, and Member accounts. New users receive a secure setup link instead of a shared password.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
@@ -117,7 +115,6 @@ export function TeamManagementPanel({
             <form className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleSubmit}>
               <input className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm text-white outline-none focus:border-teal-500" onChange={(event) => setName(event.target.value)} placeholder="Full name" required value={name} />
               <input className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm text-white outline-none focus:border-teal-500" onChange={(event) => setEmail(event.target.value)} placeholder="Email address" required type="email" value={email} />
-              <input className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm text-white outline-none focus:border-teal-500" onChange={(event) => setPassword(event.target.value)} placeholder="Temporary password" required type="password" value={password} />
               <select className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm text-white outline-none focus:border-teal-500" onChange={(event) => setRole(event.target.value as UserRole)} value={role}>
                 <option value="ADMIN">Admin</option>
                 <option value="PMO">PMO</option>

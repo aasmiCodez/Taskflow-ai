@@ -16,6 +16,8 @@ const registerSchema = z.object({
   managerId: z.string().cuid().optional().nullable(),
 });
 
+const createUserSchema = registerSchema.omit({ password: true });
+
 const userUpdateSchema = z
   .object({
     name: z.string().min(2).max(80).trim().optional(),
@@ -34,6 +36,15 @@ const loginSchema = z.object({
 
 const setupPasswordSchema = z.object({
   setupToken: z.string().min(1),
+  password,
+});
+
+const forgotPasswordSchema = z.object({
+  email,
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
   password,
 });
 
@@ -87,9 +98,12 @@ const aiDescriptionSchema = z.object({
 
 module.exports = {
   registerSchema,
+  createUserSchema,
   userUpdateSchema,
   loginSchema,
   setupPasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   taskSchema,
   taskUpdateSchema,
   subtaskSchema,

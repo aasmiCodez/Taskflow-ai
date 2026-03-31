@@ -23,6 +23,10 @@ async function main() {
       role: Role.ADMIN,
       passwordHash,
       passwordSetupRequired: false,
+      passwordSetupTokenHash: null,
+      passwordSetupExpiresAt: null,
+      passwordResetTokenHash: null,
+      passwordResetExpiresAt: null,
       managerId: null,
     },
     create: {
@@ -31,6 +35,10 @@ async function main() {
       role: Role.ADMIN,
       passwordHash,
       passwordSetupRequired: false,
+      passwordSetupTokenHash: null,
+      passwordSetupExpiresAt: null,
+      passwordResetTokenHash: null,
+      passwordResetExpiresAt: null,
     },
   });
 
@@ -41,6 +49,10 @@ async function main() {
       role: Role.PMO,
       passwordHash,
       passwordSetupRequired: false,
+      passwordSetupTokenHash: null,
+      passwordSetupExpiresAt: null,
+      passwordResetTokenHash: null,
+      passwordResetExpiresAt: null,
       managerId: null,
     },
     create: {
@@ -49,6 +61,10 @@ async function main() {
       role: Role.PMO,
       passwordHash,
       passwordSetupRequired: false,
+      passwordSetupTokenHash: null,
+      passwordSetupExpiresAt: null,
+      passwordResetTokenHash: null,
+      passwordResetExpiresAt: null,
     },
   });
 
@@ -60,6 +76,10 @@ async function main() {
         role: Role.MANAGER,
         passwordHash,
         passwordSetupRequired: false,
+        passwordSetupTokenHash: null,
+        passwordSetupExpiresAt: null,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
         managerId: null,
       },
       create: {
@@ -68,6 +88,10 @@ async function main() {
         role: Role.MANAGER,
         passwordHash,
         passwordSetupRequired: false,
+        passwordSetupTokenHash: null,
+        passwordSetupExpiresAt: null,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
       },
     }),
     prisma.user.upsert({
@@ -77,6 +101,10 @@ async function main() {
         role: Role.MANAGER,
         passwordHash,
         passwordSetupRequired: false,
+        passwordSetupTokenHash: null,
+        passwordSetupExpiresAt: null,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
         managerId: null,
       },
       create: {
@@ -85,6 +113,10 @@ async function main() {
         role: Role.MANAGER,
         passwordHash,
         passwordSetupRequired: false,
+        passwordSetupTokenHash: null,
+        passwordSetupExpiresAt: null,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
       },
     }),
   ]);
@@ -108,6 +140,10 @@ async function main() {
         role: Role.MEMBER,
         passwordHash,
         passwordSetupRequired: false,
+        passwordSetupTokenHash: null,
+        passwordSetupExpiresAt: null,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
         managerId,
       },
       create: {
@@ -116,17 +152,17 @@ async function main() {
         role: Role.MEMBER,
         passwordHash,
         passwordSetupRequired: false,
+        passwordSetupTokenHash: null,
+        passwordSetupExpiresAt: null,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
         managerId,
       },
     });
   }
 
-  console.log("Seeded demo users with the configured seed password:");
-  console.log(`admin@taskflow.ai / ${seedPassword}`);
-  console.log(`pmo@taskflow.ai / ${seedPassword}`);
-  console.log(`manager.one@taskflow.ai / ${seedPassword}`);
-  console.log(`manager.two@taskflow.ai / ${seedPassword}`);
-  console.log(`member.one@taskflow.ai / ${seedPassword}`);
+  console.log("Seeded demo users successfully.");
+  console.log("Use the SEED_DEFAULT_PASSWORD environment variable to control their initial password.");
 }
 
 main()
