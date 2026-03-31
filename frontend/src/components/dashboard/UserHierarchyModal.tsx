@@ -138,10 +138,10 @@ export function UserHierarchyModal({ currentUser, users, onClose }: UserHierarch
                   <HorizontalConnector />
                 </div>
 
-                <div className="flex w-[86%] justify-center">
-                  <div className="grid w-full gap-6 xl:grid-cols-2">
-                    {managers.length ? (
-                      managers.map((manager) => {
+                <div className="flex w-[92%] justify-center">
+                  {managers.length ? (
+                    <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
+                      {managers.map((manager) => {
                         const teamMembers = members.filter((member) => member.managerId === manager.id);
 
                         return (
@@ -158,7 +158,7 @@ export function UserHierarchyModal({ currentUser, users, onClose }: UserHierarch
                               <HorizontalConnector />
                             </div>
 
-                            <div className="mt-4 flex flex-wrap justify-center gap-3">
+                            <div className="mt-4 flex min-h-[76px] flex-col items-center gap-3">
                               {teamMembers.length ? (
                                 teamMembers.map((member) => (
                                   <div key={member.id} className="flex flex-col items-center">
@@ -185,13 +185,11 @@ export function UserHierarchyModal({ currentUser, users, onClose }: UserHierarch
                             </div>
                           </article>
                         );
-                      })
-                    ) : (
-                      <div className="xl:col-span-2 flex justify-center">
-                        <OrgCard title="No Managers Found" subtitle="MANAGER LEVEL" tone="border-emerald-400/20 bg-emerald-500/10" />
-                      </div>
-                    )}
-                  </div>
+                      })}
+                    </div>
+                  ) : (
+                    <OrgCard title="No Managers Found" subtitle="MANAGER LEVEL" tone="border-emerald-400/20 bg-emerald-500/10" />
+                  )}
                 </div>
               </div>
             </div>
