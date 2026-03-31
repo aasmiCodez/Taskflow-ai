@@ -189,12 +189,20 @@ Add these repository secrets in GitHub:
 - `VERCEL_PROJECT_ID_FRONTEND`
 - `VERCEL_PROJECT_ID_BACKEND`
 - `DATABASE_URL_PRODUCTION`
+- `DIRECT_URL_PRODUCTION`
+- `SEED_DEFAULT_PASSWORD`
 
 The production workflow is already included at:
 
 - `.github/workflows/deploy-vercel.yml`
 
 It deploys both projects from the same repo whenever `main` is updated.
+
+### Production seeding
+
+- `.github/workflows/deploy-vercel.yml` runs migrations on every backend deploy.
+- `.github/workflows/seed-production.yml` is a manual workflow for one-time or intentional production seeding.
+- Do not seed on every deploy, because the seed script upserts demo users and can reset their password/state.
 
 ## Redis behavior
 
