@@ -1,6 +1,9 @@
 name: Seed Production Database
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:

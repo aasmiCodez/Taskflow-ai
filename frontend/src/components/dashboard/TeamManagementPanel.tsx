@@ -5,6 +5,7 @@ interface TeamManagementPanelProps {
   users: TeamUser[];
   currentUserId: string;
   canManage: boolean;
+  createUserError?: string | null;
   onCreateUser: (payload: CreateUserPayload) => Promise<void>;
   onUpdateUser: (userId: string, payload: UpdateUserPayload) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
@@ -14,6 +15,7 @@ export function TeamManagementPanel({
   users,
   currentUserId,
   canManage,
+  createUserError,
   onCreateUser,
   onUpdateUser,
   onDeleteUser,
@@ -138,6 +140,11 @@ export function TeamManagementPanel({
                 Create user
               </button>
             </form>
+            {createUserError ? (
+              <p className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                {createUserError}
+              </p>
+            ) : null}
           </div>
 
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-5">

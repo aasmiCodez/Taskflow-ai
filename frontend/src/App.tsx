@@ -14,7 +14,7 @@ import { TaskComposer } from "./components/dashboard/TaskComposer";
 import { TaskStatusCenter } from "./components/dashboard/TaskStatusCenter";
 import { TeamManagementPanel } from "./components/dashboard/TeamManagementPanel";
 import { TopBar } from "./components/dashboard/TopBar";
-import { apiRequest } from "./lib/api";
+import { apiRequest, getErrorMessage } from "./lib/api";
 import { getTaskStoryPoints } from "./lib/storyPoints";
 import type {
   AiDescriptionResponse,
@@ -103,6 +103,7 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
   const [users, setUsers] = useState<TeamUser[]>([]);
+  const [createUserError, setCreateUserError] = useState<string | null>(null);
   const [flash, setFlash] = useState<FlashMessage | null>(null);
   const [searchSummary, setSearchSummary] = useState("");
   const [searchResults, setSearchResults] = useState<AiSearchResult[]>([]);
@@ -514,21 +515,41 @@ export default function App() {
 
   async function handleCreateUser(payload: CreateUserPayload) {
     try {
-      const response = await apiRequest<{ emailDelivery: string }>("/api/users", {
+      setCreateUserError(null);
+      const response = await apiRequest<{ emailDelivery: string; setupLink?: string }>("/api/users", {
         method: "POST",
         accessToken: token,
         body: payload,
       });
       await refreshUsers("ADMIN");
       await refreshDashboard();
-      showFlash(
-        "success",
+      let message =
         response.emailDelivery === "smtp"
           ? "User created and onboarding email sent."
-          : "User created, but SMTP is not configured, so the setup email could not be sent yet."
-      );
-    } catch (error: any) {
-      showFlash("error", error?.message || "Could not create user.");
+          : "User created, but SMTP is not configured, so the setup email could not be sent yet.";
+
+      if (response.emailDelivery === "failed") {
+        let copied = false;
+
+        if (response.setupLink && navigator.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(response.setupLink);
+            copied = true;
+          } catch (_error) {
+            copied = false;
+          }
+        }
+
+        message = copied
+          ? "User created, but onboarding email delivery failed. The one-time setup link has been copied to your clipboard."
+          : "User created, but onboarding email delivery failed. Check the backend response logs and fix SMTP before resending access.";
+      }
+
+      showFlash("success", message);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, "Could not create user.");
+      setCreateUserError(message);
+      showFlash("error", message);
     }
   }
 
@@ -713,6 +734,7 @@ export default function App() {
         users={users}
         currentUserId={user!.id}
         canManage={canManageUsers}
+        createUserError={createUserError}
         onCreateUser={handleCreateUser}
         onDeleteUser={handleDeleteUser}
         onUpdateUser={handleUpdateUser}

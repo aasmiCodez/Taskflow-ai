@@ -85,6 +85,11 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface ApiMessageResponse {
+  message?: string;
+  error?: string;
+}
+
 export interface FlashMessage {
   type: "success" | "error";
   message: string;
