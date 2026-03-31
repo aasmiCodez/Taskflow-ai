@@ -28,6 +28,7 @@ jobs:
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy Frontend
+        working-directory: frontend
         run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
 
   deploy-backend:
@@ -61,4 +62,5 @@ jobs:
         run: npm run prisma:migrate:deploy
 
       - name: Deploy Backend
+        working-directory: backend
         run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
